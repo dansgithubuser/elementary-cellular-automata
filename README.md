@@ -1,0 +1,2 @@
+- https://dansgithubuser.github.io/elementary-cellular-automata
+- https://dansonlinepresence.wordpress.com/2013/01/16/elementary-cellular-automata/

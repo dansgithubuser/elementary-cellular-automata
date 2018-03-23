@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<head>
+	<script type="text/javascript">
+//======================================================================//
+var VISUAL_RULE_HEIGHT=40;
+var ALIVE_COLOR="rgb(0, 255, 0)";
+var DEAD_COLOR1="rgb(128, 0, 128)";
+var DEAD_COLOR2="rgb(64, 0, 64)"
+
+var gCellSize;
+var gCanvas;
+var gContext;
+var gRule=0;
+var gState;
+
+var gUniversalStrings=["no", "probably not", "maybe", "probably", "yes"];
+var gUniversal=[
+	1, 1, 1, 1, 1,  1, 1, 1, 1, 1,//000
+	1, 1, 1, 1, 1,  1, 1, 1, 2, 1,//010
+	1, 1, 2, 1, 1,  1, 1, 1, 1, 1,//020
+	2, 1, 1, 1, 1,  1, 1, 1, 1, 1,//030
+	1, 3, 1, 1, 1,  2, 1, 1, 1, 1,//040
+	1, 1, 1, 1, 3,  1, 1, 1, 1, 1,//050
+	2, 1, 1, 1, 1,  1, 1, 1, 1, 1,//060
+	1, 1, 1, 2, 1,  2, 1, 1, 1, 1,//070
+	1, 1, 1, 1, 1,  1, 2, 1, 1, 2,//080
+	2, 1, 1, 1, 1,  1, 1, 3, 1, 1,//090
+	1, 2, 2, 1, 1,  2, 3, 3, 1, 2,//100
+	4, 1, 1, 1, 1,  1, 1, 1, 1, 1,//110
+	3, 3, 2, 1, 4,  1, 2, 1, 1, 2,//120
+	1, 1, 1, 1, 1,  2, 1, 4, 1, 1,//130
+	1, 1, 1, 1, 1,  1, 2, 3, 1, 2,//140
+	2, 2, 1, 2, 1,  1, 1, 1, 1, 1,//150
+	1, 2, 1, 1, 1,  2, 1, 1, 1, 3,//160
+	1, 1, 1, 1, 1,  1, 1, 1, 1, 1,//170
+	1, 1, 2, 2, 1,  1, 1, 1, 1, 1,//180
+	1, 1, 1, 4, 1,  2, 1, 1, 1, 1,//190
+	1, 1, 1, 1, 1,  1, 1, 1, 1, 1,//200
+	1, 1, 1, 1, 1,  1, 1, 1, 1, 1,//210
+	1, 1, 1, 1, 1,  3, 1, 1, 1, 1,//220
+	1, 1, 1, 1, 1,  1, 1, 1, 1, 1,//230
+	1, 1, 1, 1, 1,  1, 1, 1, 1, 1,//240
+	1, 1, 1, 1, 1,  1
+];
+
+var gClass=[
+	1, 2, 2, 2, 2,  2, 2, 2, 1, 2,//000
+	2, 2, 2, 2, 2,  2, 2, 2, 3, 2,//010
+	2, 2, 3, 2, 2,  2, 2, 2, 2, 2,//020
+	3, 2, 1, 2, 2,  2, 2, 2, 2, 2,//030
+	1, 4, 2, 2, 2,  3, 2, 2, 2, 2,//040
+	2, 2, 2, 2, 4,  2, 2, 2, 2, 2,//050
+	3, 2, 2, 2, 1,  2, 2, 2, 2, 2,//060
+	2, 2, 2, 2, 2,  3, 2, 2, 2, 2,//070
+	2, 2, 2, 2, 2,  2, 3, 2, 2, 3,//080
+	3, 2, 2, 2, 2,  2, 1, 4, 2, 2,//090
+	2, 3, 3, 2, 2,  3, 4, 4, 2, 2,//100
+	4, 2, 2, 2, 2,  2, 2, 2, 2, 2,//110
+	4, 4, 3, 2, 4,  2, 3, 2, 1, 3,//120
+	2, 2, 2, 2, 2,  3, 1, 4, 2, 2,//130
+	2, 2, 2, 2, 2,  2, 3, 4, 2, 3,//140
+	3, 3, 2, 3, 2,  2, 2, 2, 2, 2,//150
+	1, 3, 2, 2, 2,  3, 2, 2, 1, 4,//160
+	2, 2, 2, 2, 2,  2, 2, 2, 2, 2,//170
+	2, 2, 3, 3, 2,  2, 2, 2, 2, 2,//180
+	2, 2, 1, 4, 2,  3, 2, 2, 2, 2,//190
+	2, 2, 2, 2, 2,  2, 2, 2, 2, 2,//200
+	2, 2, 2, 2, 2,  2, 2, 2, 2, 2,//210
+	2, 2, 2, 2, 1,  4, 2, 2, 2, 2,//220
+	2, 2, 2, 2, 1,  1, 2, 2, 1, 1,//230
+	2, 2, 2, 2, 2,  2, 2, 2, 1, 1,//240
+	1, 1, 1, 1, 1,  1
+];
+
+window.onload=main;
+
+function allocate(){
+	gState=[];
+	for(var x=0; x<Math.floor(canvas.width/gCellSize); ++x)
+		gState.push(0);
+}
+
+function applyRule(grid, rule){
+	var copy=grid.concat();
+	for(var x=0; x<grid.length; ++x){
+		var c=0;
+		for(var i=-1; i<=1; ++i)
+			if(x+i>=0&&x+i<grid.length&&copy[x+i])
+				c+=1<<(i+1);
+		grid[x]=(rule&(1<<c))?1:0;
+	}
+}
+
+function mirror(rule){
+	var mirrored=rule&0xa5;
+	if(rule&0x2) mirrored|=0x10;
+	if(rule&0x8) mirrored|=0x40;
+	if(rule&0x10) mirrored|=0x2;
+	if(rule&0x40) mirrored|=0x8;
+	return mirrored;
+}
+
+function conjugate(rule){
+	var flipped=0;
+	for(var i=0; i<8; ++i)
+		if(rule&(1<<i))
+			flipped|=(0x80>>i);
+	return flipped^0xff;
+}
+
+function draw(){
+	gContext.clearRect(0, 0, gCanvas.width, gCanvas.height-VISUAL_RULE_HEIGHT);
+	cellSizeForm.cellSize.value=gCellSize;
+	canvasWidthForm.width.value=gCanvas.width;
+	canvasHeightForm.height.value=gCanvas.height;
+	infoForm.class.value="class: "+gClass[gRule];
+	infoForm.universal.value="universal: "+gUniversalStrings[gUniversal[gRule]];
+	infoForm.mirror.value="mirror rule: "+mirror(gRule);
+	infoForm.conjugate.value="conjugate rule: "+conjugate(gRule);
+	infoForm.mirrorConjugate.value="mirror conjugate rule: "+mirror(conjugate(gRule));
+	ruleForm.rule.value=gRule;
+	var state=gState.concat();
+	for(var y=0; y<Math.floor((canvas.height-VISUAL_RULE_HEIGHT)/gCellSize); ++y){
+		for(var x=0; x<Math.floor(canvas.width/gCellSize); ++x){
+			if(state[x]==1)
+				gContext.fillStyle=ALIVE_COLOR;
+			else{
+				if((x+y)%2) gContext.fillStyle=DEAD_COLOR1;
+				else gContext.fillStyle=DEAD_COLOR2;
+			}
+			gContext.fillRect(x*gCellSize, y*gCellSize, gCellSize, gCellSize);
+		}
+		applyRule(state, gRule);
+	}
+	//draw visual rule
+	var cellSize=Math.min(VISUAL_RULE_HEIGHT/4, gCanvas.width/40);
+	for(var i=0; i<8; ++i){
+		//the previous cells
+		for(var j=0; j<3; ++j){
+			if(i&(1<<j))
+				gContext.fillStyle=ALIVE_COLOR;
+			else
+				gContext.fillStyle=DEAD_COLOR1;
+			gContext.fillRect((i*5+j+1)*cellSize, gCanvas.height-VISUAL_RULE_HEIGHT+cellSize, cellSize, cellSize);
+		}
+		//the new cell
+		if(gRule&(1<<i))
+			gContext.fillStyle=ALIVE_COLOR;
+		else
+			gContext.fillStyle=DEAD_COLOR1;
+		gContext.fillRect((i*5+2)*cellSize, gCanvas.height-VISUAL_RULE_HEIGHT+cellSize*2, cellSize, cellSize);
+	}
+}
+
+function change(rule){
+	rule=((rule%256)+256)%256;
+	gRule=rule;
+	draw();
+}
+
+function click(event){
+	//figure out where the click was relative to the left of the canvas
+	var x;
+	if(!event) var event=window.event;
+	if(event.pageX) x=event.pageX;
+	else if(event.clientX)
+		x=event.clientX+document.body.scrollLeft+document.documentElement.scrollLeft;
+	x-=this.offsetLeft;
+	//toggle the corresponding cell
+	var i=Math.floor(x/gCellSize);
+	gState[i]=(gState[i]+1)%2;
+	//update
+	draw();
+}
+
+function resize(size){
+	if(size<1) size=1;
+	if(size>100) size=100;
+	gCellSize=size;
+	allocate();
+	draw();
+}
+
+function rewidth(width){
+	gCanvas.width=width;
+	allocate();
+	draw();
+}
+
+function reheight(height){
+	gCanvas.height=height;
+	allocate();
+	draw();
+}
+
+function main(){
+	gCanvas=document.getElementById("canvas");
+	gContext=gCanvas.getContext("2d");
+	gCanvas.addEventListener("mousedown", click);
+	resize(10);
+	for(var i=0; i<255; ++i)
+		if(gUniversal[i]>=2){
+			change(i);
+			break;
+		}
+}
+
+//======================================================================//
+	</script>
+</head>
+<body>
+	<canvas id="canvas" width="640" height="480">
+		<p>Your browser does not support the canvas element.</p>
+	</canvas><br>
+	<br>
+	Click on a column to toggle its top cell.<br>
+	Note that the edge of the grid forces cells dead.<br>
+	<br>
+	<form name="ruleForm">
+		<input type="text" name="rule"/>
+		<input type="button" value="change rule" onClick="change(this.form.rule.value)"/>
+	</form>
+	<form name="infoForm">
+		<output name="class"></output>
+		<br>
+		<output name="universal"></output>
+		<br>
+		<output name="mirror"></output>
+		<br>
+		<output name="conjugate"></output>
+		<br>
+		<output name="mirrorConjugate"></output>
+	</form>
+	<br>
+	<form name="cellSizeForm">
+		<input type="text" name="cellSize"/>
+		<input type="button" value="change cell size" onClick="resize(this.form.cellSize.value)"/>
+	</form>
+	<form name="canvasWidthForm">
+		<input type="text" name="width"/>
+		<input type="button" value="change canvas width" onClick="rewidth(this.form.width.value)"/>
+	</form>
+	<form name="canvasHeightForm">
+		<input type="text" name="height"/>
+		<input type="button" value="change canvas height" onClick="reheight(this.form.height.value)"/>
+	</form>
+</body>
